@@ -1,0 +1,81 @@
+<html>
+
+<head>
+    <title>Repeat Files</title>
+    <meta http-equiv="conten-type" content="text/html;charset=utf-8">
+    <script src="jquery.min.js"></script>
+    <script src="vue.min.js"></script>
+</head>
+
+<body>
+    <div id="body">
+        <button @click="refresh()">重新分析</button>
+        <button @click="del()">删除选中文件</button>
+        <img id="preview" style="position:fixed;top:0;right:0" width="500px">
+        <dl v-for="(v,k) in lists">
+            <dd>{{k}}</dd>
+            <dd v-for="(vv,kk) in v">
+                <input type="checkbox" :name="k" :value="vv" disabled>
+                <a href="javascript:;" @mouseover="show(vv)" @mouseout="$('#preview').hide()" @click="select(kk,k,vv)">{{vv}}</a>
+            </dd>
+        </dl>
+    </div>
+</body>
+<script>
+    var vue = new Vue({
+        el: "#body",
+        data: {
+            lists: [],
+            sels: []
+        },
+        created: function () {
+            $.getJSON("/files?_=" + (new Date()).getTime(), function (x) {
+                if (x.no != 0) return alert(x.data);
+                if (typeof (x.data) != "object") return alert(x.data);
+                vue.lists = x.data;
+            })
+        },
+        methods: {
+            show: function (s) {
+                var ss = s.split(".");
+                var ext = ss[ss.length - 1].toLowerCase();
+                var exts = ["jpg", "png", "gif", "bmp", "svg"];
+                for (var i in exts) {
+                    if (ext == exts[i]) {
+                        $("#preview").show().attr("src", encodeURIComponent(s));
+                        break;
+                    }
+                }
+            },
+            select: function (kk, k, s) {
+                var count = $("[name=" + k + "]").length;
+                var checked = $("[name=" + k + "]:checked").length;
+                var sel = $("[name=" + k + "]")[kk];
+                if (checked >= count - 1 && !sel.checked) return $("[name=" + k + "]");
+                sel.checked = !sel.checked;
+            },
+            refresh: function () {
+                $.getJSON("/refresh?_=" + (new Date()).getTime(), function (x) {
+                    if (x.no != 0) return alert(x.data);
+                    alert("刷新中，请查看命令行，分析完成后刷新页面！");
+                })
+            },
+            del: function () {
+                if (!confirm("确定删除吗？无法可撤销噢！")) return;
+                vue.sels = [];
+                $(":checked").each(function () {
+                    vue.sels.push($(this).val());
+                });
+                if (vue.sels.length == 0) return alert("删除什么？");
+                $.post("/remove?_=" + (new Date()).getTime(), {
+                    fs: vue.sels
+                }, function (x) {
+                    if (x.no != 0) return alert(x.data);
+                    alert("搞定！");
+                })
+            }
+        }
+    })
+</script>
+
+</html>
